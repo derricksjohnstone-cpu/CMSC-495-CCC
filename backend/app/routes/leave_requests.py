@@ -58,10 +58,13 @@ def reject_request(request_id: int, managerComment: str):
         if request.requestId == request_id:
             if request.status != "Pending":
                 raise HTTPException(status_code=400, detail="Only pending requests can be rejected")
+
             request.status = "Rejected"
             request.managerComment = managerComment
             request.updatedAt = datetime.now()
+
             return {"message": "Leave request rejected", "request": request}
+
     raise HTTPException(status_code=404, detail="Leave request not found")
 
 
@@ -71,8 +74,11 @@ def request_revision(request_id: int, managerComment: str):
         if request.requestId == request_id:
             if request.status != "Pending":
                 raise HTTPException(status_code=400, detail="Only pending requests can be sent for revision")
+
             request.status = "Revision Requested"
             request.managerComment = managerComment
             request.updatedAt = datetime.now()
+
             return {"message": "Revision requested", "request": request}
+
     raise HTTPException(status_code=404, detail="Leave request not found")
