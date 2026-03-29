@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from datetime import datetime
 from app.models.leave_request import LeaveRequest
 from app.data.leave_requests_data import leave_requests_db
+from app.data.leave_balances_data import leave_balances_db
 
 router = APIRouter(prefix="/requests", tags=["Leave Requests"])
 
@@ -35,9 +36,19 @@ def approve_request(request_id: int):
         if request.requestId == request_id:
             if request.status != "Pending":
                 raise HTTPException(status_code=400, detail="Only pending requests can be approved")
+
             request.status = "Approved"
             request.updatedAt = datetime.now()
-            return {"message": "Leave request approved", "request": request}
+
+            days = (request.endDate - request.startDate).days + 1
+
+            for balance in leave_balances_db:
+                if balance.userId == request.userId and balance.leaveTypeId == request.leaveTypeId:
+                    balance.usedDays += days
+                    return {"message": "Leave request approved", "request": request}
+
+            raise HTTPException(status_code=404, detail="Matching leave balance not found")
+
     raise HTTPException(status_code=404, detail="Leave request not found")
 
 
