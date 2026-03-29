@@ -7,6 +7,21 @@ from app.data.leave_balances_data import leave_balances_db
 router = APIRouter(prefix="/requests", tags=["Leave Requests"])
 
 
+def calculate_requested_days(start_date, end_date):
+    return (end_date - start_date).days + 1
+
+
+def find_matching_balance(user_id, leave_type_id, year):
+    for balance in leave_balances_db:
+        if (
+            balance.userId == user_id
+            and balance.leaveTypeId == leave_type_id
+            and balance.year == year
+        ):
+            return balance
+    return None
+
+
 @router.get("/")
 def get_requests():
     return leave_requests_db
@@ -46,20 +61,49 @@ def create_request(request: LeaveRequestCreate):
 def approve_request(request_id: int):
     for request in leave_requests_db:
         if request.requestId == request_id:
+
             if request.status != "Pending":
-                raise HTTPException(status_code=400, detail="Only pending requests can be approved")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Only pending requests can be approved"
+                )
+
+            requested_days = calculate_requested_days(
+                request.startDate,
+                request.endDate
+            )
+
+            request_year = request.startDate.year
+
+            balance = find_matching_balance(
+                request.userId,
+                request.leaveTypeId,
+                request_year
+            )
+
+            if balance is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Matching leave balance not found"
+                )
+
+            remaining_days = balance.totalDays - balance.usedDays
+
+            if requested_days > remaining_days:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Insufficient leave balance for this request"
+                )
 
             request.status = "Approved"
             request.updatedAt = datetime.now()
 
-            days = (request.endDate - request.startDate).days + 1
+            balance.usedDays += requested_days
 
-            for balance in leave_balances_db:
-                if balance.userId == request.userId and balance.leaveTypeId == request.leaveTypeId:
-                    balance.usedDays += days
-                    return {"message": "Leave request approved", "request": request}
-
-            raise HTTPException(status_code=404, detail="Matching leave balance not found")
+            return {
+                "message": "Leave request approved",
+                "request": request
+            }
 
     raise HTTPException(status_code=404, detail="Leave request not found")
 
@@ -69,13 +113,19 @@ def reject_request(request_id: int, managerComment: str):
     for request in leave_requests_db:
         if request.requestId == request_id:
             if request.status != "Pending":
-                raise HTTPException(status_code=400, detail="Only pending requests can be rejected")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Only pending requests can be rejected"
+                )
 
             request.status = "Rejected"
             request.managerComment = managerComment
             request.updatedAt = datetime.now()
 
-            return {"message": "Leave request rejected", "request": request}
+            return {
+                "message": "Leave request rejected",
+                "request": request
+            }
 
     raise HTTPException(status_code=404, detail="Leave request not found")
 
@@ -85,13 +135,19 @@ def request_revision(request_id: int, managerComment: str):
     for request in leave_requests_db:
         if request.requestId == request_id:
             if request.status != "Pending":
-                raise HTTPException(status_code=400, detail="Only pending requests can be sent for revision")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Only pending requests can be sent for revision"
+                )
 
             request.status = "Revision Requested"
             request.managerComment = managerComment
             request.updatedAt = datetime.now()
 
-            return {"message": "Revision requested", "request": request}
+            return {
+                "message": "Revision requested",
+                "request": request
+            }
 
     raise HTTPException(status_code=404, detail="Leave request not found")
 
@@ -101,11 +157,17 @@ def resubmit_request(request_id: int):
     for request in leave_requests_db:
         if request.requestId == request_id:
             if request.status != "Revision Requested":
-                raise HTTPException(status_code=400, detail="Only revision requested items can be resubmitted")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Only revision requested items can be resubmitted"
+                )
 
             request.status = "Pending"
             request.updatedAt = datetime.now()
 
-            return {"message": "Leave request resubmitted", "request": request}
+            return {
+                "message": "Leave request resubmitted",
+                "request": request
+            }
 
     raise HTTPException(status_code=404, detail="Leave request not found")

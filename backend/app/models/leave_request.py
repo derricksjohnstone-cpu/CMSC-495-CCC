@@ -1,7 +1,6 @@
 from pydantic import BaseModel, Field, field_validator, model_validator
 from datetime import date, datetime
 
-
 class LeaveRequestCreate(BaseModel):
     userId: int
     leaveTypeId: int
@@ -19,8 +18,8 @@ class LeaveRequestCreate(BaseModel):
 
     @model_validator(mode="after")
     def end_date_after_start_date(self):
-        if self.endDate <= self.startDate:
-            raise ValueError("endDate must be after startDate")
+        if self.endDate < self.startDate:
+            raise ValueError("endDate cannot be before startDate")
         return self
 
 
@@ -44,6 +43,6 @@ class LeaveRequest(BaseModel):
 
     @model_validator(mode="after")
     def end_date_after_start_date(self):
-        if self.endDate <= self.startDate:
-            raise ValueError("endDate must be after startDate")
+        if self.endDate < self.startDate:
+            raise ValueError("endDate cannot be before startDate")
         return self
