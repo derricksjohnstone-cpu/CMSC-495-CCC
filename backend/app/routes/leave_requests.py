@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from datetime import datetime
-from app.models.leave_request import LeaveRequest
+from app.models.leave_request import LeaveRequest, LeaveRequestCreate
 from app.data.leave_requests_data import leave_requests_db
 from app.data.leave_balances_data import leave_balances_db
 
@@ -21,13 +21,25 @@ def get_request_by_id(request_id: int):
 
 
 @router.post("/")
-def create_request(request: LeaveRequest):
-    for existing_request in leave_requests_db:
-        if existing_request.requestId == request.requestId:
-            raise HTTPException(status_code=400, detail="Request ID already exists")
+def create_request(request: LeaveRequestCreate):
+    next_id = 1
+    if leave_requests_db:
+        next_id = max(existing_request.requestId for existing_request in leave_requests_db) + 1
 
-    leave_requests_db.append(request)
-    return {"message": "Leave request created", "request": request}
+    new_request = LeaveRequest(
+        requestId=next_id,
+        userId=request.userId,
+        leaveTypeId=request.leaveTypeId,
+        startDate=request.startDate,
+        endDate=request.endDate,
+        status=request.status,
+        managerComment=request.managerComment,
+        createdAt=datetime.now(),
+        updatedAt=datetime.now()
+    )
+
+    leave_requests_db.append(new_request)
+    return {"message": "Leave request created", "request": new_request}
 
 
 @router.put("/{request_id}/approve")
@@ -80,5 +92,20 @@ def request_revision(request_id: int, managerComment: str):
             request.updatedAt = datetime.now()
 
             return {"message": "Revision requested", "request": request}
+
+    raise HTTPException(status_code=404, detail="Leave request not found")
+
+
+@router.put("/{request_id}/resubmit")
+def resubmit_request(request_id: int):
+    for request in leave_requests_db:
+        if request.requestId == request_id:
+            if request.status != "Revision Requested":
+                raise HTTPException(status_code=400, detail="Only revision requested items can be resubmitted")
+
+            request.status = "Pending"
+            request.updatedAt = datetime.now()
+
+            return {"message": "Leave request resubmitted", "request": request}
 
     raise HTTPException(status_code=404, detail="Leave request not found")
