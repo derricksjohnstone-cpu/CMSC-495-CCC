@@ -1,31 +1,67 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from datetime import datetime
 from app.models.leave_request import LeaveRequest
+from app.data.leave_requests_data import leave_requests_db
 
-router = APIRouter()
+router = APIRouter(prefix="/requests", tags=["Leave Requests"])
 
-requests_db = []
 
-@router.get("/requests")
+@router.get("/")
 def get_requests():
-    return requests_db
+    return leave_requests_db
 
-@router.post("/requests")
+
+@router.get("/{request_id}")
+def get_request_by_id(request_id: int):
+    for request in leave_requests_db:
+        if request.requestId == request_id:
+            return request
+    raise HTTPException(status_code=404, detail="Leave request not found")
+
+
+@router.post("/")
 def create_request(request: LeaveRequest):
-    requests_db.append(request)
+    for existing_request in leave_requests_db:
+        if existing_request.requestId == request.requestId:
+            raise HTTPException(status_code=400, detail="Request ID already exists")
+
+    leave_requests_db.append(request)
     return {"message": "Leave request created", "request": request}
 
-@router.put("/requests/{request_id}/approve")
-def approve_request(request_id: int):
-    for request in requests_db:
-        if request.requestId == request_id:
-            request.status = "Approved"
-            return {"message": "Leave request approved", "request": request}
-    return {"message": "Leave request not found"}
 
-@router.put("/requests/{request_id}/reject")
-def reject_request(request_id: int):
-    for request in requests_db:
+@router.put("/{request_id}/approve")
+def approve_request(request_id: int):
+    for request in leave_requests_db:
         if request.requestId == request_id:
+            if request.status != "Pending":
+                raise HTTPException(status_code=400, detail="Only pending requests can be approved")
+            request.status = "Approved"
+            request.updatedAt = datetime.now()
+            return {"message": "Leave request approved", "request": request}
+    raise HTTPException(status_code=404, detail="Leave request not found")
+
+
+@router.put("/{request_id}/reject")
+def reject_request(request_id: int, managerComment: str):
+    for request in leave_requests_db:
+        if request.requestId == request_id:
+            if request.status != "Pending":
+                raise HTTPException(status_code=400, detail="Only pending requests can be rejected")
             request.status = "Rejected"
+            request.managerComment = managerComment
+            request.updatedAt = datetime.now()
             return {"message": "Leave request rejected", "request": request}
-    return {"message": "Leave request not found"}
+    raise HTTPException(status_code=404, detail="Leave request not found")
+
+
+@router.put("/{request_id}/revision")
+def request_revision(request_id: int, managerComment: str):
+    for request in leave_requests_db:
+        if request.requestId == request_id:
+            if request.status != "Pending":
+                raise HTTPException(status_code=400, detail="Only pending requests can be sent for revision")
+            request.status = "Revision Requested"
+            request.managerComment = managerComment
+            request.updatedAt = datetime.now()
+            return {"message": "Revision requested", "request": request}
+    raise HTTPException(status_code=404, detail="Leave request not found")

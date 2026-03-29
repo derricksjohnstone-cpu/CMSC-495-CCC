@@ -1,16 +1,16 @@
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from datetime import date, datetime
 
 class LeaveRequest(BaseModel):
     requestId: int
     userId: int
-    leaveType: str
+    leaveTypeId: int
     startDate: date
     endDate: date
-    status: str
+    status: str = "Pending"
     managerComment: str | None = None
-    createdAt: datetime | None = None
-    updatedAt: datetime | None = None
+    createdAt: datetime = Field(default_factory=datetime.now)
+    updatedAt: datetime = Field(default_factory=datetime.now)
 
     @field_validator("startDate")
     @classmethod
