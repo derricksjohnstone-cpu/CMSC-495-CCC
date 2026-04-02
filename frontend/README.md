@@ -1,36 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LeaveHub Frontend
+
+The frontend for the Leave Request Approval System, built with Next.js, TypeScript, and Tailwind CSS.
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js v24 (LTS) — [download here](https://nodejs.org)
+- npm (comes with Node.js)
+
+### Installation
+
+```bash
+cd frontend
+npm install
+```
+
+### Run the Dev Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+frontend/
+├── app/
+│   ├── layout.tsx                 # Root layout (font, metadata)
+│   ├── page.tsx                   # Root page (redirects based on auth)
+│   ├── login/
+│   │   └── page.tsx               # Login page
+│   ├── employee/
+│   │   ├── page.tsx               # Employee dashboard
+│   │   ├── submit/
+│   │   │   └── page.tsx           # Leave request form
+│   │   └── requests/
+│   │       └── page.tsx           # Employee request history
+│   └── manager/
+│       ├── page.tsx               # Manager dashboard
+│       ├── calendar/
+│       │   └── page.tsx           # Team calendar
+│       └── requests/
+│           └── page.tsx           # All requests history
+├── components/
+│   ├── layout/
+│   │   ├── Sidebar.tsx            # Sidebar navigation
+│   │   └── Header.tsx             # Page header with greeting
+│   ├── cards/
+│   │   └── SummaryCard.tsx        # Reusable metric card
+│   ├── ui/
+│   │   ├── StatusBadge.tsx        # Status badge (Pending, Approved, etc.)
+│   │   └── LeaveTypeBadge.tsx     # Leave type badge (Vacation, Personal, etc.)
+│   └── requests/
+│       └── RequestCard.tsx        # Individual request display card
+└── public/
+    └── loginImage.jpg             # Login page illustration
+```
 
-## Learn More
+## Tech Stack
 
-To learn more about Next.js, take a look at the following resources:
+- **Framework:** Next.js (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS
+- **Font:** Rubik (Google Fonts)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Design Notes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- The app has two role-based views: **Employee** and **Manager**
+- After login, users are redirected to their respective dashboard based on their role
+- Shared components (StatusBadge, LeaveTypeBadge, SummaryCard, Sidebar, Header) are reused across both dashboards
+- The layout is responsive — mobile uses a bottom navigation bar and stacked layout, while desktop uses a sidebar and multi-column layouts
 
-## Deploy on Vercel
+## Backend API
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The frontend connects to a FastAPI backend. API base URL will be configured via environment variables.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Key endpoints (expected):**
+- `POST /auth/login` — Authenticate user
+- `GET /users/{user_id}` — Get user profile
+- `GET /users/{user_id}/requests` — Get user's leave requests
+- `GET /users/{user_id}/balances` — Get user's leave balances
+- `GET /manager/requests/pending` — Get all pending requests
+- `GET /manager/calendar` — Get team calendar data
+
+> **Note:** Some endpoints are still in development. Check with the backend team for the latest API status.
