@@ -3,9 +3,11 @@ from datetime import date, datetime
 
 class LeaveRequestCreate(BaseModel):
     userId: int
-    leaveTypeId: int
+    leaveTypeId: int | None = None
+    leaveType: str | None = None
     startDate: date
     endDate: date
+    leaveMode: str = "Full Day"
     status: str = "Pending"
     managerComment: str | None = None
 
@@ -17,9 +19,16 @@ class LeaveRequestCreate(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def end_date_after_start_date(self):
+    def validate_dates(self):
         if self.endDate < self.startDate:
             raise ValueError("endDate cannot be before startDate")
+
+        if self.leaveMode == "Half Day" and self.startDate != self.endDate:
+            raise ValueError("Half Day leave must be a single-day request")
+
+        if self.leaveTypeId is None and self.leaveType is None:
+            raise ValueError("Either leaveTypeId or leaveType is required")
+
         return self
 
 
@@ -29,6 +38,7 @@ class LeaveRequest(BaseModel):
     leaveTypeId: int
     startDate: date
     endDate: date
+    leaveMode: str = "Full Day"
     status: str = "Pending"
     managerComment: str | None = None
     createdAt: datetime = Field(default_factory=datetime.now)
@@ -42,7 +52,11 @@ class LeaveRequest(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def end_date_after_start_date(self):
+    def validate_dates(self):
         if self.endDate < self.startDate:
             raise ValueError("endDate cannot be before startDate")
+
+        if self.leaveMode == "Half Day" and self.startDate != self.endDate:
+            raise ValueError("Half Day leave must be a single-day request")
+
         return self

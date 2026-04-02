@@ -3,12 +3,16 @@ from datetime import datetime
 from app.models.leave_request import LeaveRequest, LeaveRequestCreate
 from app.data.leave_requests_data import leave_requests_db
 from app.data.leave_balances_data import leave_balances_db
+from app.data.leave_types_data import leave_types_db
 
 router = APIRouter(prefix="/requests", tags=["Leave Requests"])
 
 
-def calculate_requested_days(start_date, end_date):
-    return (end_date - start_date).days + 1
+def calculate_requested_days(start_date, end_date, leave_mode):
+    total_days = (end_date - start_date).days + 1
+    if leave_mode == "Half Day":
+        return 0.5
+    return total_days
 
 
 def find_matching_balance(user_id, leave_type_id, year):
@@ -21,6 +25,16 @@ def find_matching_balance(user_id, leave_type_id, year):
             return balance
     return None
 
+def get_leave_type_id_from_input(request):
+    if request.leaveTypeId is not None:
+        return request.leaveTypeId
+
+    if request.leaveType is not None:
+        for leave_type in leave_types_db:
+            if leave_type.name.lower() == request.leaveType.lower():
+                return leave_type.leaveTypeId
+
+    raise HTTPException(status_code=400, detail="Invalid leave type")
 
 @router.get("/")
 def get_requests():
@@ -41,12 +55,15 @@ def create_request(request: LeaveRequestCreate):
     if leave_requests_db:
         next_id = max(existing_request.requestId for existing_request in leave_requests_db) + 1
 
+    resolved_leave_type_id = get_leave_type_id_from_input(request)
+
     new_request = LeaveRequest(
         requestId=next_id,
         userId=request.userId,
-        leaveTypeId=request.leaveTypeId,
+        leaveTypeId=resolved_leave_type_id,
         startDate=request.startDate,
         endDate=request.endDate,
+        leaveMode=request.leaveMode,
         status=request.status,
         managerComment=request.managerComment,
         createdAt=datetime.now(),
@@ -70,8 +87,9 @@ def approve_request(request_id: int):
 
             requested_days = calculate_requested_days(
                 request.startDate,
-                request.endDate
-            )
+                request.endDate,
+                request.leaveMode
+                )
 
             request_year = request.startDate.year
 
