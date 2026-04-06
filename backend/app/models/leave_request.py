@@ -1,15 +1,15 @@
 from pydantic import BaseModel, Field, field_validator, model_validator
 from datetime import date, datetime
 
+
 class LeaveRequestCreate(BaseModel):
     userId: int
-    leaveTypeId: int | None = None
-    leaveType: str | None = None
+    leaveType: str
     startDate: date
     endDate: date
     leaveMode: str = "Full Day"
+    description: str | None = None
     status: str = "Pending"
-    managerComment: str | None = None
 
     @field_validator("startDate")
     @classmethod
@@ -26,21 +26,19 @@ class LeaveRequestCreate(BaseModel):
         if self.leaveMode == "Half Day" and self.startDate != self.endDate:
             raise ValueError("Half Day leave must be a single-day request")
 
-        if self.leaveTypeId is None and self.leaveType is None:
-            raise ValueError("Either leaveTypeId or leaveType is required")
-
         return self
 
 
 class LeaveRequest(BaseModel):
     requestId: int
     userId: int
-    leaveTypeId: int
+    leaveType: str
     startDate: date
     endDate: date
     leaveMode: str = "Full Day"
+    description: str | None = None
     status: str = "Pending"
-    managerComment: str | None = None
+    comments: str | None = None
     createdAt: datetime = Field(default_factory=datetime.now)
     updatedAt: datetime = Field(default_factory=datetime.now)
 

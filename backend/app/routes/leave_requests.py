@@ -15,7 +15,18 @@ def calculate_requested_days(start_date, end_date, leave_mode):
     return total_days
 
 
-def find_matching_balance(user_id, leave_type_id, year):
+def find_leave_type_id_by_name(leave_type_name: str):
+    for leave_type in leave_types_db:
+        if leave_type.name.lower() == leave_type_name.lower():
+            return leave_type.leaveTypeId
+    return None
+
+
+def find_matching_balance(user_id, leave_type_name, year):
+    leave_type_id = find_leave_type_id_by_name(leave_type_name)
+    if leave_type_id is None:
+        return None
+
     for balance in leave_balances_db:
         if (
             balance.userId == user_id
@@ -25,16 +36,6 @@ def find_matching_balance(user_id, leave_type_id, year):
             return balance
     return None
 
-def get_leave_type_id_from_input(request):
-    if request.leaveTypeId is not None:
-        return request.leaveTypeId
-
-    if request.leaveType is not None:
-        for leave_type in leave_types_db:
-            if leave_type.name.lower() == request.leaveType.lower():
-                return leave_type.leaveTypeId
-
-    raise HTTPException(status_code=400, detail="Invalid leave type")
 
 @router.get("/")
 def get_requests():
@@ -55,17 +56,16 @@ def create_request(request: LeaveRequestCreate):
     if leave_requests_db:
         next_id = max(existing_request.requestId for existing_request in leave_requests_db) + 1
 
-    resolved_leave_type_id = get_leave_type_id_from_input(request)
-
     new_request = LeaveRequest(
         requestId=next_id,
         userId=request.userId,
-        leaveTypeId=resolved_leave_type_id,
+        leaveType=request.leaveType,
         startDate=request.startDate,
         endDate=request.endDate,
         leaveMode=request.leaveMode,
-        status=request.status,
-        managerComment=request.managerComment,
+        description=request.description,
+        status="Pending",
+        comments=None,
         createdAt=datetime.now(),
         updatedAt=datetime.now()
     )
@@ -89,13 +89,13 @@ def approve_request(request_id: int):
                 request.startDate,
                 request.endDate,
                 request.leaveMode
-                )
+            )
 
             request_year = request.startDate.year
 
             balance = find_matching_balance(
                 request.userId,
-                request.leaveTypeId,
+                request.leaveType,
                 request_year
             )
 
@@ -127,7 +127,7 @@ def approve_request(request_id: int):
 
 
 @router.put("/{request_id}/reject")
-def reject_request(request_id: int, managerComment: str):
+def reject_request(request_id: int, comments: str):
     for request in leave_requests_db:
         if request.requestId == request_id:
             if request.status != "Pending":
@@ -137,7 +137,7 @@ def reject_request(request_id: int, managerComment: str):
                 )
 
             request.status = "Rejected"
-            request.managerComment = managerComment
+            request.comments = comments
             request.updatedAt = datetime.now()
 
             return {
@@ -149,7 +149,7 @@ def reject_request(request_id: int, managerComment: str):
 
 
 @router.put("/{request_id}/revision")
-def request_revision(request_id: int, managerComment: str):
+def request_revision(request_id: int, comments: str):
     for request in leave_requests_db:
         if request.requestId == request_id:
             if request.status != "Pending":
@@ -159,7 +159,7 @@ def request_revision(request_id: int, managerComment: str):
                 )
 
             request.status = "Revision Requested"
-            request.managerComment = managerComment
+            request.comments = comments
             request.updatedAt = datetime.now()
 
             return {

@@ -5,24 +5,26 @@ leave_requests_db = [
     LeaveRequest(
         requestId=1,
         userId=1,
-        leaveTypeId=1,
+        leaveType="Vacation",
         startDate=date(2027, 4, 10),
         endDate=date(2027, 4, 12),
         leaveMode="Full Day",
+        description="Family trip",
         status="Approved",
-        managerComment=None,
+        comments=None,
         createdAt=datetime.now(),
         updatedAt=datetime.now()
     ),
     LeaveRequest(
         requestId=2,
         userId=1,
-        leaveTypeId=2,
+        leaveType="Personal",
         startDate=date(2027, 4, 20),
         endDate=date(2027, 4, 21),
         leaveMode="Full Day",
+        description="Personal time off",
         status="Pending",
-        managerComment=None,
+        comments=None,
         createdAt=datetime.now(),
         updatedAt=datetime.now()
     )
