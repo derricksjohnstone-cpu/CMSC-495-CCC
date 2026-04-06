@@ -28,10 +28,10 @@ class LeaveRequestCreate(BaseModel):
 
         return self
 
-
 class LeaveRequest(BaseModel):
     requestId: int
     userId: int
+    reviewerId: int | None = None
     leaveType: str
     startDate: date
     endDate: date

@@ -5,6 +5,7 @@ leave_requests_db = [
     LeaveRequest(
         requestId=1,
         userId=1,
+        reviewerId=2,
         leaveType="Vacation",
         startDate=date(2027, 4, 10),
         endDate=date(2027, 4, 12),
@@ -18,6 +19,7 @@ leave_requests_db = [
     LeaveRequest(
         requestId=2,
         userId=1,
+        reviewerId=None,
         leaveType="Personal",
         startDate=date(2027, 4, 20),
         endDate=date(2027, 4, 21),

@@ -4,6 +4,8 @@ from app.models.leave_request import LeaveRequest, LeaveRequestCreate
 from app.data.leave_requests_data import leave_requests_db
 from app.data.leave_balances_data import leave_balances_db
 from app.data.leave_types_data import leave_types_db
+from app.data.request_history_data import request_history_db
+from app.models.request_history import RequestHistory
 
 router = APIRouter(prefix="/requests", tags=["Leave Requests"])
 
@@ -36,6 +38,20 @@ def find_matching_balance(user_id, leave_type_name, year):
             return balance
     return None
 
+def log_request_history(request_id: int, action: str, performed_by: int | None):
+    next_history_id = 1
+    if request_history_db:
+        next_history_id = max(item.historyId for item in request_history_db) + 1
+
+    history_entry = RequestHistory(
+        historyId=next_history_id,
+        requestId=request_id,
+        action=action,
+        performedBy=performed_by
+    )
+
+    request_history_db.append(history_entry)
+
 
 @router.get("/")
 def get_requests():
@@ -59,6 +75,7 @@ def create_request(request: LeaveRequestCreate):
     new_request = LeaveRequest(
         requestId=next_id,
         userId=request.userId,
+        reviewerId=None,
         leaveType=request.leaveType,
         startDate=request.startDate,
         endDate=request.endDate,
@@ -71,11 +88,18 @@ def create_request(request: LeaveRequestCreate):
     )
 
     leave_requests_db.append(new_request)
+
+    log_request_history(
+        request_id=new_request.requestId,
+        action="submitted",
+        performed_by=new_request.userId
+    )
+
     return {"message": "Leave request created", "request": new_request}
 
 
 @router.put("/{request_id}/approve")
-def approve_request(request_id: int):
+def approve_request(request_id: int, reviewerId: int):
     for request in leave_requests_db:
         if request.requestId == request_id:
 
@@ -114,9 +138,16 @@ def approve_request(request_id: int):
                 )
 
             request.status = "Approved"
+            request.reviewerId = reviewerId
             request.updatedAt = datetime.now()
 
             balance.usedDays += requested_days
+
+            log_request_history(
+                request_id=request.requestId,
+                action="approved",
+                performed_by=reviewerId
+            )
 
             return {
                 "message": "Leave request approved",
@@ -127,7 +158,7 @@ def approve_request(request_id: int):
 
 
 @router.put("/{request_id}/reject")
-def reject_request(request_id: int, comments: str):
+def reject_request(request_id: int, comments: str, reviewerId: int):
     for request in leave_requests_db:
         if request.requestId == request_id:
             if request.status != "Pending":
@@ -138,7 +169,14 @@ def reject_request(request_id: int, comments: str):
 
             request.status = "Rejected"
             request.comments = comments
+            request.reviewerId = reviewerId
             request.updatedAt = datetime.now()
+
+            log_request_history(
+                request_id=request.requestId,
+                action="rejected",
+                performed_by=reviewerId
+            )
 
             return {
                 "message": "Leave request rejected",
@@ -149,7 +187,7 @@ def reject_request(request_id: int, comments: str):
 
 
 @router.put("/{request_id}/revision")
-def request_revision(request_id: int, comments: str):
+def request_revision(request_id: int, comments: str, reviewerId: int):
     for request in leave_requests_db:
         if request.requestId == request_id:
             if request.status != "Pending":
@@ -160,7 +198,14 @@ def request_revision(request_id: int, comments: str):
 
             request.status = "Revision Requested"
             request.comments = comments
+            request.reviewerId = reviewerId
             request.updatedAt = datetime.now()
+
+            log_request_history(
+                request_id=request.requestId,
+                action="revision requested",
+                performed_by=reviewerId
+            )
 
             return {
                 "message": "Revision requested",
@@ -181,7 +226,14 @@ def resubmit_request(request_id: int):
                 )
 
             request.status = "Pending"
+            request.reviewerId = None
             request.updatedAt = datetime.now()
+
+            log_request_history(
+                request_id=request.requestId,
+                action="resubmitted",
+                performed_by=request.userId
+            )
 
             return {
                 "message": "Leave request resubmitted",
@@ -189,3 +241,17 @@ def resubmit_request(request_id: int):
             }
 
     raise HTTPException(status_code=404, detail="Leave request not found")
+
+@router.get("/{request_id}/history")
+def get_request_history(request_id: int):
+    history = [item for item in request_history_db if item.requestId == request_id]
+
+    if not history:
+        raise HTTPException(status_code=404, detail="No history found for this request")
+
+    return history
+
+
+@router.get("/history/all")
+def get_all_request_history():
+    return request_history_db
