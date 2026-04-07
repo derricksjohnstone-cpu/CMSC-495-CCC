@@ -7,8 +7,11 @@ This web application allows employees to submit time-off requests and managers t
 2. Tech Stack
 Frontend: React (Next.js), TypeScript, Tailwind CSS
 Backend: Python with FastAPI
-Database: PostgreSQL
+Database: PostgreSQL (hosted on Supabase)
 Version Control: Git and GitHub
+
+Database Connection: Direct PostgreSQL via psycopg2 with connection pooling.
+See `backend/README.md` for Supabase setup instructions.
 
 3. Core Functional Requirements
 Employee Role
