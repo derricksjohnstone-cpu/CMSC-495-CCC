@@ -25,20 +25,26 @@ function ScrollColumn({
 
   useEffect(() => {
     if (containerRef.current) {
-      containerRef.current.scrollTop = selectedIndex * ITEM_HEIGHT;
+      containerRef.current.scrollTop = (selectedIndex + CENTER_INDEX) * ITEM_HEIGHT;
     }
   }, [selectedIndex]);
 
   const handleScroll = () => {
     if (containerRef.current) {
       const scrollTop = containerRef.current.scrollTop;
-      const index = Math.round(scrollTop / ITEM_HEIGHT);
+      const index = Math.round(scrollTop / ITEM_HEIGHT) - CENTER_INDEX;
       const clampedIndex = Math.max(0, Math.min(index, items.length - 1));
       if (items[clampedIndex] !== selected) {
         onSelect(items[clampedIndex]);
       }
     }
   };
+
+  const paddedItems = [
+    ...Array(CENTER_INDEX).fill(""),
+    ...items,
+    ...Array(CENTER_INDEX).fill(""),
+  ];
 
   return (
     <div className="relative" style={{ height: ITEM_HEIGHT * VISIBLE_ITEMS }}>
@@ -53,33 +59,34 @@ function ScrollColumn({
         ref={containerRef}
         className="h-full overflow-y-auto scrollbar-hide"
         onScroll={handleScroll}
-        style={{
-          scrollSnapType: "y mandatory",
-          paddingTop: CENTER_INDEX * ITEM_HEIGHT,
-          paddingBottom: CENTER_INDEX * ITEM_HEIGHT,
-        }}
+        style={{ scrollSnapType: "y mandatory" }}
       >
-        {items.map((item, i) => {
+        {paddedItems.map((item, i) => {
           const isSelected = item === selected;
+          const isEmpty = item === "";
           return (
             <div
               key={i}
-              className={`flex items-center justify-center cursor-pointer transition-all ${
-                isSelected
-                  ? "text-gray-900 font-semibold text-lg"
-                  : "text-gray-400 text-sm"
+              className={`flex items-center justify-center transition-all relative z-20 ${
+                isEmpty
+                  ? ""
+                  : isSelected
+                    ? "text-gray-900 font-semibold text-lg cursor-pointer"
+                    : "text-gray-400 text-sm cursor-pointer"
               }`}
               style={{
                 height: ITEM_HEIGHT,
                 scrollSnapAlign: "start",
               }}
               onClick={() => {
-                onSelect(item);
-                if (containerRef.current) {
-                  containerRef.current.scrollTo({
-                    top: i * ITEM_HEIGHT,
-                    behavior: "smooth",
-                  });
+                if (!isEmpty) {
+                  onSelect(item);
+                  if (containerRef.current) {
+                    containerRef.current.scrollTo({
+                      top: i * ITEM_HEIGHT,
+                      behavior: "smooth",
+                    });
+                  }
                 }
               }}
             >
@@ -112,7 +119,7 @@ function DatePickerModal({
   const [year, setYear] = useState(String(validDate.getFullYear()));
 
   const currentYear = now.getFullYear();
-  const years = Array.from({ length: 6 }, (_, i) => String(currentYear + i));
+  const years = Array.from({ length: 10 }, (_, i) => String(currentYear + i));
   const daysInMonth = new Date(
     parseInt(year),
     MONTHS.indexOf(month) + 1,
