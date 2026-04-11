@@ -1,9 +1,9 @@
-
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return (
-    <div className="h-screen flex items-center justify-center text-5xl">
-      <h1>This will be our app dashboard</h1>
-    </div>
-  );
+  // TODO: Check auth token and redirect based on role
+  // if (user.role === "manager") redirect("/manager");
+  // if (user.role === "employee") redirect("/employee");
+
+  redirect("/login");
 }
