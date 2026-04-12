@@ -31,9 +31,15 @@ export default function LeaveRequestForm() {
 
   const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault();
+
+    const leaveTypeMap: Record<string, number> = {
+      vacation: 1,
+      personal: 2,
+    };
+
     console.log("Leave request submitted:", {
       description,
-      leaveType,
+      leaveTypeId: leaveTypeMap[leaveType],
       leaveMode,
       startDate,
       endDate,
