@@ -1,57 +1,33 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Header from "@/components/layout/Header";
 import SummaryCard from "@/components/cards/SummaryCard";
 import StatusBadge from "@/components/ui/StatusBadge";
 
-// TODO: Replace with real API data
-const mockUser = {
-  name: "Sara",
-};
+interface LeaveRequest {
+  requestId: number;
+  userId: number;
+  reviewerId: number | null;
+  leaveType: string;
+  startDate: string;
+  endDate: string;
+  leaveMode: string;
+  description: string;
+  status: string;
+  comments: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
-const mockBalances = {
-  vacation: { used: 5, total: 20 },
-  personal: { used: 6, total: 10 },
-};
-
-const mockRequests = [
-  {
-    requestId: 1,
-    leaveType: "Vacation",
-    startDate: "2026-05-20",
-    endDate: "2026-05-24",
-    status: "Pending" as const,
-  },
-  {
-    requestId: 2,
-    leaveType: "Personal",
-    startDate: "2026-04-30",
-    endDate: "2026-04-30",
-    status: "Approved" as const,
-  },
-  {
-    requestId: 3,
-    leaveType: "Vacation",
-    startDate: "2026-04-15",
-    endDate: "2026-04-15",
-    status: "Rejected" as const,
-    managerComment: "Too many people out that week.",
-  },
-];
-
-const mockHistory = {
-  lastVacation: {
-    startDate: "2026-03-12",
-    endDate: "2026-03-18",
-    days: 5,
-  },
-  lastPersonal: {
-    startDate: "2026-01-09",
-    endDate: "2026-01-09",
-    days: 1,
-  },
-  totalUsedThisYear: 10,
-};
+interface LeaveBalance {
+  balanceId: number;
+  userId: number;
+  leaveTypeId: number;
+  totalDays: number;
+  usedDays: number;
+  year: number;
+}
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr + "T00:00:00");
@@ -69,39 +45,109 @@ function calculateDays(start: string, end: string) {
 }
 
 export default function EmployeeDashboard() {
-  const pendingCount = mockRequests.filter((r) => r.status === "Pending").length;
-  const vacationPercent = Math.round(
-    ((mockBalances.vacation.total - mockBalances.vacation.used) / mockBalances.vacation.total) * 100
+  const [userName, setUserName] = useState("");
+  const [requests, setRequests] = useState<LeaveRequest[]>([]);
+  const [balances, setBalances] = useState<LeaveBalance[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("user");
+    if (!stored) return;
+
+    const user = JSON.parse(stored);
+    setUserName(user.name.split(" ")[0]); // First name only
+
+    const fetchData = async () => {
+      try {
+        const [reqRes, balRes] = await Promise.all([
+          fetch(`http://localhost:8000/users/${user.userId}/requests`),
+          fetch(`http://localhost:8000/users/${user.userId}/balances`),
+        ]);
+
+        const reqData = await reqRes.json();
+        const balData = await balRes.json();
+
+        setRequests(reqData);
+        setBalances(balData);
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Filter balances for current year
+  const currentYear = new Date().getFullYear();
+  const vacationBalance = balances.find(
+    (b) => b.leaveTypeId === 1 && b.year === currentYear
   );
-  const personalPercent = Math.round(
-    ((mockBalances.personal.total - mockBalances.personal.used) / mockBalances.personal.total) * 100
+  const personalBalance = balances.find(
+    (b) => b.leaveTypeId === 2 && b.year === currentYear
   );
+
+  const vacationRemaining = vacationBalance
+    ? vacationBalance.totalDays - vacationBalance.usedDays
+    : 0;
+  const personalRemaining = personalBalance
+    ? personalBalance.totalDays - personalBalance.usedDays
+    : 0;
+  const vacationPercent = vacationBalance
+    ? Math.round((vacationRemaining / vacationBalance.totalDays) * 100)
+    : 0;
+  const personalPercent = personalBalance
+    ? Math.round((personalRemaining / personalBalance.totalDays) * 100)
+    : 0;
+
+  const pendingCount = requests.filter((r) => r.status === "Pending").length;
+
+  // History: find last approved vacation and personal
+  const approvedRequests = requests.filter((r) => r.status === "Approved");
+  const lastVacation = approvedRequests
+    .filter((r) => r.leaveType === "Vacation")
+    .sort((a, b) => b.startDate.localeCompare(a.startDate))[0];
+  const lastPersonal = approvedRequests
+    .filter((r) => r.leaveType === "Personal")
+    .sort((a, b) => b.startDate.localeCompare(a.startDate))[0];
+
+  const totalUsedThisYear =
+    (vacationBalance?.usedDays || 0) + (personalBalance?.usedDays || 0);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-500">Loading dashboard...</p>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <Header userName={mockUser.name} showNewRequestButton />
+      <Header userName={userName} showNewRequestButton />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <SummaryCard
           label="Vacation balance"
           value={`${vacationPercent}%`}
-          subtitle={`${mockBalances.vacation.total - mockBalances.vacation.used} days remaining out of ${mockBalances.vacation.total}`}
+          subtitle={`${vacationRemaining} days remaining out of ${vacationBalance?.totalDays || 0}`}
           bgColor="bg-green-100"
           progressBar={{
-            used: mockBalances.vacation.used,
-            total: mockBalances.vacation.total,
+            used: vacationBalance?.usedDays || 0,
+            total: vacationBalance?.totalDays || 0,
             color: "bg-indigo-500",
           }}
         />
         <SummaryCard
           label="Personal balance"
           value={`${personalPercent}%`}
-          subtitle={`${mockBalances.personal.total - mockBalances.personal.used} days remaining out of ${mockBalances.personal.total}`}
+          subtitle={`${personalRemaining} days remaining out of ${personalBalance?.totalDays || 0}`}
           bgColor="bg-blue-100"
           progressBar={{
-            used: mockBalances.personal.used,
-            total: mockBalances.personal.total,
+            used: personalBalance?.usedDays || 0,
+            total: personalBalance?.totalDays || 0,
             color: "bg-emerald-500",
           }}
         />
@@ -122,29 +168,33 @@ export default function EmployeeDashboard() {
             My Recent Requests
           </h3>
           <div className="space-y-3">
-            {mockRequests.map((request) => (
-              <div
-                key={request.requestId}
-                className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <p className="font-medium text-gray-900">
-                    {request.leaveType}
+            {requests.length === 0 ? (
+              <p className="text-sm text-gray-500">No requests yet.</p>
+            ) : (
+              requests.map((request) => (
+                <div
+                  key={request.requestId}
+                  className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="font-medium text-gray-900">
+                      {request.leaveType}
+                    </p>
+                    <StatusBadge status={request.status} />
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Requested for {formatDate(request.startDate)}
+                    {request.startDate !== request.endDate &&
+                      ` - ${formatDate(request.endDate)}`}
                   </p>
-                  <StatusBadge status={request.status} />
+                  {request.comments && (
+                    <p className="text-sm text-red-500 mt-2">
+                      {request.comments}
+                    </p>
+                  )}
                 </div>
-                <p className="text-sm text-gray-500">
-                  Requested for {formatDate(request.startDate)}
-                  {request.startDate !== request.endDate &&
-                    ` - ${formatDate(request.endDate)}`}
-                </p>
-                {request.managerComment && (
-                  <p className="text-sm text-red-500 mt-2">
-                    {request.managerComment}
-                  </p>
-                )}
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -156,29 +206,44 @@ export default function EmployeeDashboard() {
           <div className="space-y-3">
             <div className="bg-sky-50 rounded-xl p-4 border border-sky-100">
               <p className="font-medium text-gray-900">Last Vacation Leave</p>
-              <p className="text-sm text-gray-500 mt-1">
-                {formatDate(mockHistory.lastVacation.startDate)} -{" "}
-                {formatDate(mockHistory.lastVacation.endDate)}
-              </p>
-              <p className="text-sm text-gray-500">
-                {mockHistory.lastVacation.days} days
-              </p>
+              {lastVacation ? (
+                <>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {formatDate(lastVacation.startDate)}
+                    {lastVacation.startDate !== lastVacation.endDate &&
+                      ` - ${formatDate(lastVacation.endDate)}`}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {calculateDays(lastVacation.startDate, lastVacation.endDate)} days
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-gray-500 mt-1">No vacation taken yet</p>
+              )}
             </div>
 
             <div className="bg-sky-50 rounded-xl p-4 border border-sky-100">
               <p className="font-medium text-gray-900">Last Personal Leave</p>
-              <p className="text-sm text-gray-500 mt-1">
-                {formatDate(mockHistory.lastPersonal.startDate)}
-              </p>
-              <p className="text-sm text-gray-500">
-                {mockHistory.lastPersonal.days} day
-              </p>
+              {lastPersonal ? (
+                <>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {formatDate(lastPersonal.startDate)}
+                    {lastPersonal.startDate !== lastPersonal.endDate &&
+                      ` - ${formatDate(lastPersonal.endDate)}`}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {calculateDays(lastPersonal.startDate, lastPersonal.endDate)} day(s)
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-gray-500 mt-1">No personal leave taken yet</p>
+              )}
             </div>
 
             <div className="bg-sky-50 rounded-xl p-4 border border-sky-100">
               <p className="font-medium text-gray-900">Days Used This Year</p>
               <p className="text-sm text-gray-500 mt-1">
-                Total: {mockHistory.totalUsedThisYear} days
+                Total: {totalUsedThisYear} days
               </p>
             </div>
           </div>
