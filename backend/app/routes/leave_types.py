@@ -1,9 +1,9 @@
 from fastapi import APIRouter
-from app.data.leave_types_data import leave_types_db
+from app.crud import leave_types as leave_types_crud
 
 router = APIRouter(prefix="/leave-types", tags=["Leave Types"])
 
 
 @router.get("/")
 def get_leave_types():
-    return leave_types_db
+    return leave_types_crud.get_all_leave_types()

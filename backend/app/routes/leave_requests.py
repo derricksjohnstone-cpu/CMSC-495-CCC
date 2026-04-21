@@ -1,11 +1,10 @@
 from fastapi import APIRouter, HTTPException
 from datetime import datetime
 from app.models.leave_request import LeaveRequest, LeaveRequestCreate
-from app.data.leave_requests_data import leave_requests_db
-from app.data.leave_balances_data import leave_balances_db
-from app.data.leave_types_data import leave_types_db
-from app.data.request_history_data import request_history_db
-from app.models.request_history import RequestHistory
+from app.crud import leave_requests as leave_requests_crud
+from app.crud import leave_balances as leave_balances_crud
+from app.crud import leave_types as leave_types_crud
+from app.crud import request_history as request_history_crud
 
 router = APIRouter(prefix="/requests", tags=["Leave Requests"])
 
@@ -18,9 +17,9 @@ def calculate_requested_days(start_date, end_date, leave_mode):
 
 
 def find_leave_type_id_by_name(leave_type_name: str):
-    for leave_type in leave_types_db:
-        if leave_type.name.lower() == leave_type_name.lower():
-            return leave_type.leaveTypeId
+    leave_type = leave_types_crud.get_leave_type_by_name(leave_type_name)
+    if leave_type:
+        return leave_type.leaveTypeId
     return None
 
 
@@ -28,71 +27,30 @@ def find_matching_balance(user_id, leave_type_name, year):
     leave_type_id = find_leave_type_id_by_name(leave_type_name)
     if leave_type_id is None:
         return None
-
-    for balance in leave_balances_db:
-        if (
-            balance.userId == user_id
-            and balance.leaveTypeId == leave_type_id
-            and balance.year == year
-        ):
-            return balance
-    return None
-
-def log_request_history(request_id: int, action: str, performed_by: int | None):
-    next_history_id = 1
-    if request_history_db:
-        next_history_id = max(item.historyId for item in request_history_db) + 1
-
-    history_entry = RequestHistory(
-        historyId=next_history_id,
-        requestId=request_id,
-        action=action,
-        performedBy=performed_by
-    )
-
-    request_history_db.append(history_entry)
+    return leave_balances_crud.get_balance(user_id, leave_type_id, year)
 
 
 @router.get("/")
 def get_requests():
-    return leave_requests_db
+    return leave_requests_crud.get_all_requests()
 
 
 @router.get("/{request_id}")
 def get_request_by_id(request_id: int):
-    for request in leave_requests_db:
-        if request.requestId == request_id:
-            return request
-    raise HTTPException(status_code=404, detail="Leave request not found")
+    request = leave_requests_crud.get_request_by_id(request_id)
+    if not request:
+        raise HTTPException(status_code=404, detail="Leave request not found")
+    return request
 
 
 @router.post("/")
 def create_request(request: LeaveRequestCreate):
-    next_id = 1
-    if leave_requests_db:
-        next_id = max(existing_request.requestId for existing_request in leave_requests_db) + 1
+    new_request = leave_requests_crud.create_request(request)
 
-    new_request = LeaveRequest(
-        requestId=next_id,
-        userId=request.userId,
-        reviewerId=None,
-        leaveType=request.leaveType,
-        startDate=request.startDate,
-        endDate=request.endDate,
-        leaveMode=request.leaveMode,
-        description=request.description,
-        status="Pending",
-        comments=None,
-        createdAt=datetime.now(),
-        updatedAt=datetime.now()
-    )
-
-    leave_requests_db.append(new_request)
-
-    log_request_history(
+    request_history_crud.create_history(
         request_id=new_request.requestId,
         action="submitted",
-        performed_by=new_request.userId
+        performed_by=new_request.userId,
     )
 
     return {"message": "Leave request created", "request": new_request}
@@ -100,158 +58,140 @@ def create_request(request: LeaveRequestCreate):
 
 @router.put("/{request_id}/approve")
 def approve_request(request_id: int, reviewerId: int):
-    for request in leave_requests_db:
-        if request.requestId == request_id:
+    request = leave_requests_crud.get_request_by_id(request_id)
+    if not request:
+        raise HTTPException(status_code=404, detail="Leave request not found")
 
-            if request.status != "Pending":
-                raise HTTPException(
-                    status_code=400,
-                    detail="Only pending requests can be approved"
-                )
+    if request.status != "Pending":
+        raise HTTPException(
+            status_code=400,
+            detail="Only pending requests can be approved",
+        )
 
-            requested_days = calculate_requested_days(
-                request.startDate,
-                request.endDate,
-                request.leaveMode
-            )
+    requested_days = calculate_requested_days(
+        request.startDate, request.endDate, request.leaveMode
+    )
 
-            request_year = request.startDate.year
+    request_year = request.startDate.year
 
-            balance = find_matching_balance(
-                request.userId,
-                request.leaveType,
-                request_year
-            )
+    balance = find_matching_balance(request.userId, request.leaveType, request_year)
 
-            if balance is None:
-                raise HTTPException(
-                    status_code=404,
-                    detail="Matching leave balance not found"
-                )
+    if balance is None:
+        raise HTTPException(
+            status_code=404, detail="Matching leave balance not found"
+        )
 
-            remaining_days = balance.totalDays - balance.usedDays
+    remaining_days = balance.totalDays - balance.usedDays
 
-            if requested_days > remaining_days:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Insufficient leave balance for this request"
-                )
+    if requested_days > remaining_days:
+        raise HTTPException(
+            status_code=400,
+            detail="Insufficient leave balance for this request",
+        )
 
-            request.status = "Approved"
-            request.reviewerId = reviewerId
-            request.updatedAt = datetime.now()
+    updated = leave_requests_crud.update_request(
+        request_id, status="Approved", reviewerId=reviewerId
+    )
 
-            balance.usedDays += requested_days
+    leave_balances_crud.update_used_days(
+        balance.balanceId, balance.usedDays + requested_days
+    )
 
-            log_request_history(
-                request_id=request.requestId,
-                action="approved",
-                performed_by=reviewerId
-            )
+    request_history_crud.create_history(
+        request_id=request_id, action="approved", performed_by=reviewerId
+    )
 
-            return {
-                "message": "Leave request approved",
-                "request": request
-            }
-
-    raise HTTPException(status_code=404, detail="Leave request not found")
+    return {"message": "Leave request approved", "request": updated}
 
 
 @router.put("/{request_id}/reject")
 def reject_request(request_id: int, comments: str, reviewerId: int):
-    for request in leave_requests_db:
-        if request.requestId == request_id:
-            if request.status != "Pending":
-                raise HTTPException(
-                    status_code=400,
-                    detail="Only pending requests can be rejected"
-                )
+    request = leave_requests_crud.get_request_by_id(request_id)
+    if not request:
+        raise HTTPException(status_code=404, detail="Leave request not found")
 
-            request.status = "Rejected"
-            request.comments = comments
-            request.reviewerId = reviewerId
-            request.updatedAt = datetime.now()
+    if request.status != "Pending":
+        raise HTTPException(
+            status_code=400,
+            detail="Only pending requests can be rejected",
+        )
 
-            log_request_history(
-                request_id=request.requestId,
-                action="rejected",
-                performed_by=reviewerId
-            )
+    updated = leave_requests_crud.update_request(
+        request_id, status="Rejected", comments=comments, reviewerId=reviewerId
+    )
 
-            return {
-                "message": "Leave request rejected",
-                "request": request
-            }
+    request_history_crud.create_history(
+        request_id=request_id, action="rejected", performed_by=reviewerId
+    )
 
-    raise HTTPException(status_code=404, detail="Leave request not found")
+    return {"message": "Leave request rejected", "request": updated}
 
 
 @router.put("/{request_id}/revision")
 def request_revision(request_id: int, comments: str, reviewerId: int):
-    for request in leave_requests_db:
-        if request.requestId == request_id:
-            if request.status != "Pending":
-                raise HTTPException(
-                    status_code=400,
-                    detail="Only pending requests can be sent for revision"
-                )
+    request = leave_requests_crud.get_request_by_id(request_id)
+    if not request:
+        raise HTTPException(status_code=404, detail="Leave request not found")
 
-            request.status = "Revision Requested"
-            request.comments = comments
-            request.reviewerId = reviewerId
-            request.updatedAt = datetime.now()
+    if request.status != "Pending":
+        raise HTTPException(
+            status_code=400,
+            detail="Only pending requests can be sent for revision",
+        )
 
-            log_request_history(
-                request_id=request.requestId,
-                action="revision requested",
-                performed_by=reviewerId
-            )
+    updated = leave_requests_crud.update_request(
+        request_id,
+        status="Revision Requested",
+        comments=comments,
+        reviewerId=reviewerId,
+    )
 
-            return {
-                "message": "Revision requested",
-                "request": request
-            }
+    request_history_crud.create_history(
+        request_id=request_id,
+        action="revision requested",
+        performed_by=reviewerId,
+    )
 
-    raise HTTPException(status_code=404, detail="Leave request not found")
+    return {"message": "Revision requested", "request": updated}
 
 
 @router.put("/{request_id}/resubmit")
 def resubmit_request(request_id: int):
-    for request in leave_requests_db:
-        if request.requestId == request_id:
-            if request.status != "Revision Requested":
-                raise HTTPException(
-                    status_code=400,
-                    detail="Only revision requested items can be resubmitted"
-                )
+    request = leave_requests_crud.get_request_by_id(request_id)
+    if not request:
+        raise HTTPException(status_code=404, detail="Leave request not found")
 
-            request.status = "Pending"
-            request.reviewerId = None
-            request.updatedAt = datetime.now()
+    if request.status != "Revision Requested":
+        raise HTTPException(
+            status_code=400,
+            detail="Only revision requested items can be resubmitted",
+        )
 
-            log_request_history(
-                request_id=request.requestId,
-                action="resubmitted",
-                performed_by=request.userId
-            )
+    updated = leave_requests_crud.update_request(
+        request_id, status="Pending", reviewerId=None
+    )
 
-            return {
-                "message": "Leave request resubmitted",
-                "request": request
-            }
+    request_history_crud.create_history(
+        request_id=request_id,
+        action="resubmitted",
+        performed_by=request.userId,
+    )
 
-    raise HTTPException(status_code=404, detail="Leave request not found")
+    return {"message": "Leave request resubmitted", "request": updated}
+
 
 @router.get("/{request_id}/history")
 def get_request_history(request_id: int):
-    history = [item for item in request_history_db if item.requestId == request_id]
+    history = request_history_crud.get_history_by_request(request_id)
 
     if not history:
-        raise HTTPException(status_code=404, detail="No history found for this request")
+        raise HTTPException(
+            status_code=404, detail="No history found for this request"
+        )
 
     return history
 
 
 @router.get("/history/all")
 def get_all_request_history():
-    return request_history_db
+    return request_history_crud.get_all_history()
