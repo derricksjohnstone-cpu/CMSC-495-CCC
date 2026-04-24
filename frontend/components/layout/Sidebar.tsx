@@ -1,7 +1,9 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Avatar from "@/components/ui/Avatar";
 
 interface SidebarProps {
   role: "employee" | "manager";
@@ -26,6 +28,22 @@ export default function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname();
   const links = role === "manager" ? managerLinks : employeeLinks;
 
+  const [state, setState] = useState({
+    user: { name: "", email: "", profileImage: null as string | null, department: "" },
+    mounted: false,
+  });
+
+  useEffect(() => {
+    const stored = localStorage.getItem("user");
+    const parsed = stored ? JSON.parse(stored) : null;
+    setState({
+      user: parsed
+        ? { name: parsed.name, email: parsed.email, profileImage: parsed.profileImage, department: parsed.department }
+        : { name: "", email: "", profileImage: null, department: "" },
+      mounted: true,
+    });
+  }, []);
+
   return (
     <aside className="w-64 border-r border-gray-200 min-h-screen p-6 bg-white hidden md:block">
       <div className="mb-8">
@@ -33,10 +51,20 @@ export default function Sidebar({ role }: SidebarProps) {
       </div>
 
       <div className="mb-8 text-center">
-        <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-2" />
-        <p className="font-medium text-gray-900">Sarah Connor</p>
-        <p className="text-sm text-gray-500">sarah@company.com</p>
-        <p className="text-xs text-gray-400 mt-1 capitalize">{role}</p>
+        {state.mounted ? (
+          <>
+            <div className="mx-auto mb-2 flex justify-center">
+              <Avatar name={state.user.name || "User"} profileImage={state.user.profileImage} size="lg" />
+            </div>
+            <p className="font-medium text-gray-900">{state.user.name}</p>
+            <p className="text-sm text-gray-500">{state.user.email}</p>
+            <p className="text-xs text-gray-400 mt-1 capitalize">
+              {role === "manager" ? "Manager" : state.user.department}
+            </p>
+          </>
+        ) : (
+          <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-2 animate-pulse" />
+        )}
       </div>
 
       <nav className="space-y-1">
