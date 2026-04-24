@@ -47,7 +47,7 @@ export default function Sidebar({ role }: SidebarProps) {
   return (
     <aside className="w-64 border-r border-gray-200 min-h-screen p-6 bg-white hidden md:block">
       <div className="mb-8">
-        <h1 className="text-xl font-bold text-gray-900">LeaveHub</h1>
+        <h1 className="text-2xl font-bold text-gray-900">LeaveHub</h1>
       </div>
 
       <div className="mb-8 text-center">
