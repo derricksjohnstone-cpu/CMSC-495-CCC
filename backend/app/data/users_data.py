@@ -7,6 +7,7 @@ users_db = [
         email="employee@test.com",
         password="test123",
         role="Employee",
+        managerId=2,
         department="IT",
         profileImage=None
     ),
@@ -16,6 +17,7 @@ users_db = [
         email="manager@test.com",
         password="test123",
         role="Manager",
+        managerId=None,
         department="IT",
         profileImage=None
     )

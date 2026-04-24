@@ -31,17 +31,31 @@ backend/
 - manager.py  
 - users.py  
 
+## Database Setup (Supabase)
+
+1. Get the `.env` file from the team channel in Microsoft Teams and place it in the `backend/` directory. The file is shared — everyone uses the same credentials.
+
+2. Run the schema and seed data via the Supabase SQL Editor:
+   - Open your project at https://supabase.com/dashboard
+   - Go to SQL Editor
+   - Paste and run `database/schema.sql` to create tables
+   - Paste and run `database/seed.sql` to insert dev data
+
 ## Running the Backend
 
 1. Open a terminal in the backend folder  
 2. Activate the virtual environment  
-3. Run the backend server:
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+4. Run the backend server:
 
 ```bash
 uvicorn main:app --reload
 ```
 
-4. Open Swagger documentation in the browser:
+5. Open Swagger documentation in the browser:
 
 ```
 http://127.0.0.1:8000/docs
