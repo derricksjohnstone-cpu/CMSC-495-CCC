@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import StatusBadge from "@/components/ui/StatusBadge";
 import LeaveTypeBadge from "@/components/ui/LeaveTypeBadge";
+import Header from "@/components/layout/Header";
 
 interface LeaveRequest {
   requestId: number;
@@ -80,6 +81,9 @@ export default function MyRequestsPage() {
 
   return (
     <div>
+      <div className="md:hidden">
+        <Header />
+      </div>
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900">My Requests</h2>
         <p className="text-sm text-gray-500 mt-1">

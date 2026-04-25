@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Avatar from "@/components/ui/Avatar";
+import Header from "@/components/layout/Header";
 
 export default function SettingsPage() {
   const [user, setUser] = useState({
@@ -97,6 +98,9 @@ export default function SettingsPage() {
 
   return (
     <div>
+      <div className="md:hidden">
+        <Header />
+      </div>
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
         <p className="text-sm text-gray-500 mt-1">
