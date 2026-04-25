@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import Header from "@/components/layout/Header";
 import SummaryCard from "@/components/cards/SummaryCard";
 import StatusBadge from "@/components/ui/StatusBadge";
@@ -126,6 +127,14 @@ export default function EmployeeDashboard() {
   return (
     <div>
       <Header userName={userName} showNewRequestButton />
+
+      {/* Mobile: New Leave Request button */}
+      <Link
+        href="/employee/submit"
+        className="block sm:hidden w-full py-3 mb-4 text-center text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl shadow-sm hover:from-indigo-600 hover:to-purple-600 transition-all"
+      >
+        New Leave Request
+      </Link>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">

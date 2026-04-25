@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Header from "@/components/layout/Header";
 
 export default function LeaveRequestForm() {
   const [description, setDescription] = useState("");
@@ -79,6 +80,9 @@ export default function LeaveRequestForm() {
   return (
     <div className="min-h-screen bg-sky-50/50 flex items-start md:items-center justify-center p-4 md:p-8">
       <div className="w-full max-w-4xl">
+        <div className="md:hidden">
+          <Header />
+        </div>
 
         <div className="mb-6 md:mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
