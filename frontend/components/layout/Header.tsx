@@ -57,7 +57,7 @@ export default function Header({ userName, showNewRequestButton = false }: Heade
       {showNewRequestButton && (
         <Link
           href="/employee/submit"
-          className="hidden sm:inline-block px-5 py-2.5 border border-gray-300 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          className="hidden sm:inline-block px-5 py-2.5 border border-gray-300 rounded-full text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl shadow-sm hover:from-indigo-600 hover:to-purple-600 transition-all"
         >
           New Leave Request
         </Link>
