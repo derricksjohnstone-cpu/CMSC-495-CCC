@@ -9,6 +9,7 @@ export default function SettingsPage() {
     name: "",
     email: "",
     department: "",
+    role: "",
     profileImage: null as string | null,
   });
   const [currentPassword, setCurrentPassword] = useState("");
@@ -26,6 +27,7 @@ export default function SettingsPage() {
         name: parsed.name,
         email: parsed.email,
         department: parsed.department,
+        role: parsed.role || "Employee",
         profileImage: parsed.profileImage,
       });
     }
@@ -44,7 +46,6 @@ export default function SettingsPage() {
       return;
     }
 
-    // TODO: Replace with API call when backend adds PUT /users/{id}/password
     console.log("Password change requested:", { currentPassword, newPassword });
     setPasswordMessage("Password change is not available yet. Backend endpoint coming soon.");
     setCurrentPassword("");
@@ -69,15 +70,12 @@ export default function SettingsPage() {
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result as string;
-
-      // Update localStorage with the new image
       const stored = localStorage.getItem("user");
       if (stored) {
         const parsed = JSON.parse(stored);
         parsed.profileImage = base64;
         localStorage.setItem("user", JSON.stringify(parsed));
       }
-
       setUser((prev) => ({ ...prev, profileImage: base64 }));
       setImageMessage("Profile picture updated! Refresh to see changes in the sidebar.");
     };
@@ -91,7 +89,6 @@ export default function SettingsPage() {
       parsed.profileImage = null;
       localStorage.setItem("user", JSON.stringify(parsed));
     }
-
     setUser((prev) => ({ ...prev, profileImage: null }));
     setImageMessage("Profile picture removed.");
   };
@@ -167,7 +164,7 @@ export default function SettingsPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-500 mb-1">Role</label>
-              <p className="bg-gray-100 text-gray-900 p-3 rounded-xl text-sm">Employee</p>
+              <p className="bg-gray-100 text-gray-900 p-3 rounded-xl text-sm">{user.role}</p>
             </div>
           </div>
           <p className="text-xs text-gray-400 mt-4">
@@ -180,9 +177,7 @@ export default function SettingsPage() {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Change Password</h3>
           <form onSubmit={handlePasswordChange} className="space-y-4 max-w-md">
             <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">
-                Current Password
-              </label>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Current Password</label>
               <input
                 type="password"
                 className="w-full bg-gray-100 text-gray-900 p-3 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
@@ -192,9 +187,7 @@ export default function SettingsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">
-                New Password
-              </label>
+              <label className="block text-sm font-medium text-gray-500 mb-1">New Password</label>
               <input
                 type="password"
                 className="w-full bg-gray-100 text-gray-900 p-3 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
@@ -204,9 +197,7 @@ export default function SettingsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">
-                Confirm New Password
-              </label>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Confirm New Password</label>
               <input
                 type="password"
                 className="w-full bg-gray-100 text-gray-900 p-3 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
@@ -232,9 +223,7 @@ export default function SettingsPage() {
         {/* Logout */}
         <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Logout</h3>
-          <p className="text-sm text-gray-500 mb-4">
-            Sign out of your account on this device.
-          </p>
+          <p className="text-sm text-gray-500 mb-4">Sign out of your account on this device.</p>
           <button
             type="button"
             onClick={() => {

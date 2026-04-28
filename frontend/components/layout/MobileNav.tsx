@@ -3,11 +3,35 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 
+const employeeLinks = [
+  { label: "Dashboard", href: "/employee" },
+  { label: "Submit Request", href: "/employee/submit" },
+  { label: "My Requests", href: "/employee/requests" },
+  { label: "Settings", href: "/settings" },
+];
+
+const managerLinks = [
+  { label: "Dashboard", href: "/manager" },
+  { label: "Pending Requests", href: "/manager/pending" },
+  { label: "Team Calendar", href: "/manager/calendar" },
+  { label: "All Requests", href: "/manager/requests" },
+  { label: "Settings", href: "/settings" },
+];
+
 export default function MobileNav() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [role, setRole] = useState<"employee" | "manager">("employee");
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const stored = localStorage.getItem("user");
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed.role === "Manager") {
+        setRole("manager");
+      }
+    }
+
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false);
@@ -16,6 +40,8 @@ export default function MobileNav() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const links = role === "manager" ? managerLinks : employeeLinks;
 
   return (
     <div className="sm:hidden relative" ref={menuRef}>
@@ -32,18 +58,16 @@ export default function MobileNav() {
 
       {menuOpen && (
         <div className="absolute right-4 top-12 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50">
-          <Link href="/employee" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setMenuOpen(false)}>
-            Dashboard
-          </Link>
-          <Link href="/employee/submit" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setMenuOpen(false)}>
-            Submit Request
-          </Link>
-          <Link href="/employee/requests" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setMenuOpen(false)}>
-            My Requests
-          </Link>
-          <Link href="/employee/settings" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setMenuOpen(false)}>
-            Settings
-          </Link>
+          {links.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
+              onClick={() => setMenuOpen(false)}
+            >
+              {link.label}
+            </Link>
+          ))}
         </div>
       )}
     </div>
