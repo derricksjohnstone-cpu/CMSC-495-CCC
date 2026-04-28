@@ -9,8 +9,23 @@ interface HeaderProps {
   showNewRequestButton?: boolean;
 }
 
+const employeeLinks = [
+  { label: "Dashboard", href: "/employee" },
+  { label: "Submit Request", href: "/employee/submit" },
+  { label: "My Requests", href: "/employee/requests" },
+  { label: "Settings", href: "/settings" },
+];
+
+const managerLinks = [
+  { label: "Dashboard", href: "/manager" },
+  { label: "Pending Requests", href: "/manager/pending" },
+  { label: "Team Calendar", href: "/manager/calendar" },
+  { label: "All Requests", href: "/manager/requests" },
+  { label: "Settings", href: "/settings" },
+];
+
 export default function Header({ userName, showNewRequestButton = false }: HeaderProps) {
-  const [user, setUser] = useState({ name: "", profileImage: null as string | null });
+  const [user, setUser] = useState({ name: "", profileImage: null as string | null, role: "" });
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -18,7 +33,7 @@ export default function Header({ userName, showNewRequestButton = false }: Heade
     const stored = localStorage.getItem("user");
     if (stored) {
       const parsed = JSON.parse(stored);
-      setUser({ name: parsed.name, profileImage: parsed.profileImage });
+      setUser({ name: parsed.name, profileImage: parsed.profileImage, role: parsed.role || "Employee" });
     }
   }, []);
 
@@ -33,6 +48,7 @@ export default function Header({ userName, showNewRequestButton = false }: Heade
   }, []);
 
   const displayName = userName || user.name.split(" ")[0];
+  const links = user.role === "Manager" ? managerLinks : employeeLinks;
 
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -53,7 +69,6 @@ export default function Header({ userName, showNewRequestButton = false }: Heade
         </div>
       </div>
 
-      {/* Desktop: New Leave Request button */}
       {showNewRequestButton && (
         <Link
           href="/employee/submit"
@@ -63,7 +78,6 @@ export default function Header({ userName, showNewRequestButton = false }: Heade
         </Link>
       )}
 
-      {/* Mobile: Hamburger menu */}
       <div className="relative sm:hidden" ref={menuRef}>
         <button
           onClick={() => setMenuOpen(!menuOpen)}
@@ -78,18 +92,16 @@ export default function Header({ userName, showNewRequestButton = false }: Heade
 
         {menuOpen && (
           <div className="absolute right-0 top-12 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50">
-            <Link href="/employee" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setMenuOpen(false)}>
-              Dashboard
-            </Link>
-            <Link href="/employee/submit" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setMenuOpen(false)}>
-              Submit Request
-            </Link>
-            <Link href="/employee/requests" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setMenuOpen(false)}>
-              My Requests
-            </Link>
-            <Link href="/employee/settings" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setMenuOpen(false)}>
-              Settings
-            </Link>
+            {links.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
+                onClick={() => setMenuOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ))}
           </div>
         )}
       </div>
